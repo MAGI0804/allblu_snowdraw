@@ -1,0 +1,41 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    expose:
+      - "8088"
+    volumes:
+      - ./media:/app/media
+      - ./logs:/app/logs
+    environment:
+      - DB_ENGINE=mysql
+      - DB_HOST=rm-uf623nc5tc2icc2u9uo.mysql.rds.aliyuncs.com
+      - DB_PORT=3306
+      - DB_NAME=wechat_member
+      - DB_USER=youlansy
+      - DB_PASSWORD=Allblu2022#
+      - SECRET_KEY=django-insecure-m89*e)$$=h*0a#6!$$=e+r@w5%985!j!f8y2mt%@#qw%o=i#!f*6
+      - JWT_ACCESS_TOKEN_LIFETIME=60
+      - JWT_REFRESH_TOKEN_LIFETIME=1440
+    networks:
+      - web_network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8089:80"  # HTTP端口映射（修改为未被使用的端口）
+      - "443:443"  # HTTPS端口映射（修改为443以避免与前端冲突）
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+      - ./ssl:/app/ssl:ro  # SSL证书挂载，只读权限
+    depends_on:
+      - web
+    networks:
+      - web_network
+
+networks:
+  web_network:
+    driver: bridge
