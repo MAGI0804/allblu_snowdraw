@@ -58,6 +58,9 @@ func InitRoutes(router *gin.Engine) {
 	// 初始化抽奖功能相关路由
 	InitSnowFunctionRoutes(router)
 
+	//初始化填写地址路由
+	InitSnowAddressRoutes(router)
+
 	// 测试路由
 	router.GET("api/test/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Server is running"})

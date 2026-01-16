@@ -56,6 +56,7 @@ func RunMigrations() {
 		&models.SnowLotteryDraw{},
 		&models.SnowOrderData{},
 		&models.SnowLotteryDraw{},
+		&models.SnowAddress{},
 	}
 
 	// 循环同步每个模型

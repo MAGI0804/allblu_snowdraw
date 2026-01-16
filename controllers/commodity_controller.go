@@ -357,17 +357,6 @@ func (cc *CommodityController) AddGoods(c *gin.Context) {
 		return
 	}
 
-	// 提交事务
-	if err := begin.Commit().Error; err != nil {
-		begin.Rollback()
-		log.Printf("提交事务失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "添加商品失败: " + err.Error(),
-		})
-		return
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "添加成功",

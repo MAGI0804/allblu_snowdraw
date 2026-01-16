@@ -13,17 +13,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"django_to_go/config"
 	"django_to_go/db"
 	"django_to_go/models"
 	"django_to_go/utils"
+
+	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // UserController 用户控制器
 
 type UserController struct{}
+type UserQueryRequest struct {
+	UserId int `json:"user_id"`
+}
 
 // UserRegistration 用户注册
 func (uc *UserController) UserRegistration(c *gin.Context) {
@@ -85,21 +89,16 @@ func (uc *UserController) UserRegistration(c *gin.Context) {
 // UserQuery 查询用户信息
 func (uc *UserController) UserQuery(c *gin.Context) {
 	// 解析请求体
-	var requestData map[string]interface{}
-	if err := c.ShouldBindJSON(&requestData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求体格式"})
-		return
-	}
+	var req UserQueryRequest
 
-	userID, ok := requestData["user_id"].(float64)
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少必要参数"})
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求体格式"})
 		return
 	}
 
 	// 查询用户
 	var user models.User
-	if err := db.DB.Where("user_id = ?", int(userID)).First(&user).Error; err != nil {
+	if err := db.DB.Where("user_id = ?", int(req.UserId)).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 		return
 	}
@@ -150,7 +149,7 @@ func (uc *UserController) UserModify(c *gin.Context) {
 	// 生成请求ID用于日志跟踪
 	requestID := fmt.Sprintf("%d", time.Now().UnixNano())
 	log.Printf("[UserModify] 请求开始，requestID: %s, Content-Type: %s", requestID, c.ContentType())
-	
+
 	// 检查是否为multipart/form-data请求
 	if strings.Contains(c.ContentType(), "multipart/form-data") {
 		// 处理文件上传请求
@@ -224,16 +223,16 @@ func (uc *UserController) UserModify(c *gin.Context) {
 			log.Printf("[UserModify] 成功获取文件: %s, 大小: %d字节, requestID: %s", header.Filename, header.Size, requestID)
 			// 生成唯一文件名
 			uniqueFilename := utils.GenerateUniqueFilename(header.Filename)
-			
+
 			// 定义保存路径 - 只保存相对路径，不包含media前缀
 			savePath := fmt.Sprintf("user_avatars/%s", uniqueFilename)
-			
+
 			// 确保目录存在 - 使用与静态文件服务一致的相对路径
 			log.Printf("[UserModify] 尝试创建目录: ./media/user_avatars, requestID: %s", requestID)
 			if err := os.MkdirAll("./media/user_avatars", 0755); err != nil {
 				log.Printf("[UserModify] 创建目录失败: %v, requestID: %s", err, requestID)
 			}
-			
+
 			// 创建文件 - 使用相对路径
 			fullPath := "./media/" + savePath
 			log.Printf("[UserModify] 尝试创建文件: %s, requestID: %s", fullPath, requestID)
@@ -244,7 +243,7 @@ func (uc *UserController) UserModify(c *gin.Context) {
 				return
 			}
 			defer dst.Close()
-			
+
 			// 复制文件内容
 			log.Printf("[UserModify] 开始复制文件内容, requestID: %s", requestID)
 			bytesWritten, err := io.Copy(dst, file)
@@ -254,7 +253,7 @@ func (uc *UserController) UserModify(c *gin.Context) {
 				return
 			}
 			log.Printf("[UserModify] 文件复制成功, 写入字节数: %d, requestID: %s", bytesWritten, requestID)
-			
+
 			// 更新用户头像路径
 			user.UserImg = savePath
 			log.Printf("[UserModify] 更新用户头像路径: %s, requestID: %s", savePath, requestID)
@@ -610,9 +609,9 @@ func (uc *UserController) AddData(c *gin.Context) {
 
 	// 创建用户数据
 	userData := models.UserData{
-		UserID:    userID,
-		DataType:  dataType,
-		DataValue: dataValue,
+		UserID:     userID,
+		DataType:   dataType,
+		DataValue:  dataValue,
 		CreateTime: time.Now(),
 	}
 
@@ -684,9 +683,9 @@ func (uc *UserController) FindData(c *gin.Context) {
 	result := make([]map[string]interface{}, 0, len(userDatas))
 	for _, data := range userDatas {
 		item := map[string]interface{}{
-			"id":         data.ID,
-			"data_type":  data.DataType,
-			"data_value": data.DataValue,
+			"id":          data.ID,
+			"data_type":   data.DataType,
+			"data_value":  data.DataValue,
 			"create_time": data.CreateTime.Format("2006-01-02 15:04:05"),
 		}
 		result = append(result, item)

@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"django_to_go/db"
+	"django_to_go/models"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -8,9 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"django_to_go/db"
-	"django_to_go/models"
 
 	"github.com/gin-gonic/gin"
 )
