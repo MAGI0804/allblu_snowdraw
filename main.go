@@ -44,7 +44,7 @@ func main() {
 	routes.InitRoutes(router)
 
 	// 启动服务器
-	port := "3088"
+	port := "8088"
 	log.Printf("Server starting on port %s\n", port)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

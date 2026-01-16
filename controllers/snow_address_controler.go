@@ -22,6 +22,11 @@ type BatchQueryAddressRequest struct {
 	PageSize int `json:"page_size" binding:"required,min=1,max=100"`
 }
 
+type QueryAddressByMobileRequest struct {
+	Mobile    string `json:"mobile" binding:"required"`
+	DrawBatch int    `json:"draw_batch" binding:"required"`
+}
+
 // 校验用户是否能够填写地址
 func (snc *SnowAddressController) QualificationAddressVerification(c *gin.Context) {
 	var request QuerySnowAddressRequest
@@ -246,4 +251,49 @@ func (suc *SnowAddressController) ExportAllAddress(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, msg.ErrResponseStr("导出失败"))
 		return
 	}
+}
+
+func (suc *SnowAddressController) QueryAddressByMobile(c *gin.Context) {
+	var request QueryAddressByMobileRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, msg.ErrResponse("参数错误", err))
+		return
+	}
+	var userID int
+	fmt.Printf("原始波次值", request.DrawBatch)
+	searchKey := fmt.Sprintf("\"%d\": %s", request.DrawBatch, request.Mobile)
+	fmt.Println("searchKey:", searchKey)
+	result := db.DB.Table("snow_uesr").
+		Where("mobile_batch LIKE ?", "%"+searchKey+"%").
+		Limit(1). // 强制只取第一条，优化性能
+		Pluck("user_id", &userID)
+	fmt.Printf("查询的user_id: %d\n", userID)
+
+	// 5. 处理查询异常
+	if result.Error != nil {
+		c.JSON(http.StatusBadRequest, msg.ErrResponseStr("查询失败"))
+		return
+	}
+
+	// 6. 检查是否查询到结果（user_id为0表示无匹配）
+	if userID == 0 {
+		c.JSON(http.StatusBadRequest, msg.ErrResponseStr("查询失败"))
+		return
+	}
+	var snowaddress models.SnowAddress
+	result = db.DB.Where("user_id = ?", userID).First(&snowaddress)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, msg.ErrResponseStr("未填写地址"))
+		return
+	}
+	info := map[string]any{
+		"province":         snowaddress.Province,
+		"city":             snowaddress.City,
+		"county":           snowaddress.County,
+		"detailed_address": snowaddress.DetailedAddress,
+		"receiver_name":    snowaddress.ReceiverName,
+		"receiver_phone":   snowaddress.ReceiverPhone,
+	}
+	// 用户存在，返回地址信息
+	c.JSON(http.StatusOK, msg.SuccessResponse("查询成功", &info))
 }

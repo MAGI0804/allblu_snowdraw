@@ -18,5 +18,6 @@ func InitSnowAddressRoutes(router *gin.Engine) {
 		addressGroup.POST("update_address", addressController.UpdateAddress)                                //填写地址
 		addressGroup.POST("addrssses_query", addressController.BatchQueryAddress)                           //批量查询地址
 		addressGroup.POST("export_excel_addrssses", addressController.ExportAllAddress)                     //导出地址到Excel
+		addressGroup.POST("query_address_by_mobile", addressController.QueryAddressByMobile)                //根据手机号查询地址
 	}
 }
