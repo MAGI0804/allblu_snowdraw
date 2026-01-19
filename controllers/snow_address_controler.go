@@ -168,7 +168,7 @@ func (suc *SnowAddressController) UpdateAddressByMobile(c *gin.Context) {
 	fmt.Printf("原始波次值: %d\n", request.DrawBatch)
 	searchKey := fmt.Sprintf("\"%d\": %s", request.DrawBatch, request.Mobile)
 	fmt.Println("searchKey:", searchKey)
-	result := db.DB.Table("snow_user"). // 注意表名拼写正确
+	result := db.DB.Table("snow_uesr"). // 注意表名拼写正确
 						Where("mobile_batch LIKE ?", "%"+searchKey+"%").
 						Limit(1). // 强制只取第一条，优化性能
 						Pluck("user_id", &userID)
@@ -343,7 +343,7 @@ func (suc *SnowAddressController) QueryAddressByMobile(c *gin.Context) {
 	fmt.Printf("原始波次值", request.DrawBatch)
 	searchKey := fmt.Sprintf("\"%d\": %s", request.DrawBatch, request.Mobile)
 	fmt.Println("searchKey:", searchKey)
-	result := db.DB.Table("snow_user").
+	result := db.DB.Table("snow_uesr").
 		Where("mobile_batch LIKE ?", "%"+searchKey+"%").
 		Limit(1). // 强制只取第一条，优化性能
 		Pluck("user_id", &userID)
