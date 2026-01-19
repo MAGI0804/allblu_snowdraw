@@ -27,6 +27,17 @@ type QueryAddressByMobileRequest struct {
 	DrawBatch int    `json:"draw_batch" binding:"required"`
 }
 
+type UpdateAddressByMobileRequest struct {
+	Mobile          string `json:"mobile" binding:"required"`
+	DrawBatch       int    `json:"draw_batch" binding:"required"`
+	Province        string `json:"province" binding:"required"`
+	City            string `json:"city" binding:"required"`
+	County          string `json:"county" binding:"required"`
+	DetailedAddress string `json:"detailed_address" binding:"required"`
+	ReceiverName    string `json:"receiver_name" binding:"required"`
+	ReceiverPhone   string `json:"receiver_phone" binding:"required"`
+}
+
 // 校验用户是否能够填写地址
 func (snc *SnowAddressController) QualificationAddressVerification(c *gin.Context) {
 	var request QuerySnowAddressRequest
@@ -48,17 +59,17 @@ func (snc *SnowAddressController) QualificationAddressVerification(c *gin.Contex
 		"end_time":   end_time,
 	}
 	if result.Error != nil {
-		c.JSON(http.StatusNotFound, msg.ErrResponseStr("用户不存在"))
+		c.JSON(http.StatusBadRequest, msg.ErrResponseStr("用户不存在"))
 		return
 	}
 	//校验是否参与过抽奖
 	fmt.Printf("抽奖码:", user.SuccessCode)
 	if user.SuccessCode == "{}" {
-		c.JSON(http.StatusNotFound, msg.ErrResponseStr("用户没有参与抽奖"))
+		c.JSON(http.StatusBadRequest, msg.ErrResponseStr("用户没有参与抽奖"))
 		return
 	}
 	if user.ReceiverName != "" {
-		c.JSON(http.StatusNotFound, msg.ErrResponseStr("已填写过地址"))
+		c.JSON(http.StatusBadRequest, msg.ErrResponseStr("已中奖"))
 		return
 	}
 	var snowaddress models.SnowAddress
@@ -71,7 +82,7 @@ func (snc *SnowAddressController) QualificationAddressVerification(c *gin.Contex
 			return
 		}
 		if nowtime.Before(begin_time) || nowtime.After(end_time) {
-			c.JSON(http.StatusNotFound, gin.H{
+			c.JSON(http.StatusBadRequest, gin.H{
 				"msg": "当前未在允许时间内",
 				"data": map[string]any{
 					"begin_time": begin_time,
@@ -142,6 +153,72 @@ func (suc *SnowAddressController) QueryUserAddress(c *gin.Context) {
 	}
 	// 用户存在，返回地址信息
 	c.JSON(http.StatusOK, msg.SuccessResponse("查询成功", &info))
+}
+
+// UpdateAddressByMobile 根据手机号和波次修改地址信息
+func (suc *SnowAddressController) UpdateAddressByMobile(c *gin.Context) {
+	var request UpdateAddressByMobileRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, msg.ErrResponse("参数错误", err))
+		return
+	}
+
+	// 根据手机号和波次查询用户ID
+	var userID int
+	fmt.Printf("原始波次值: %d\n", request.DrawBatch)
+	searchKey := fmt.Sprintf("\"%d\": %s", request.DrawBatch, request.Mobile)
+	fmt.Println("searchKey:", searchKey)
+	result := db.DB.Table("snow_user"). // 注意表名拼写正确
+						Where("mobile_batch LIKE ?", "%"+searchKey+"%").
+						Limit(1). // 强制只取第一条，优化性能
+						Pluck("user_id", &userID)
+	fmt.Printf("查询的user_id: %d\n", userID)
+
+	// 处理查询异常
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, msg.ErrResponseStr("查询用户失败"))
+		return
+	}
+
+	// 检查是否查询到结果（user_id为0表示无匹配）
+	if userID == 0 {
+		c.JSON(http.StatusNotFound, msg.ErrResponseStr("未找到匹配的用户"))
+		return
+	}
+
+	// 检查用户是否存在
+	var user models.SnowUser
+	result = db.DB.Where("user_id = ?", userID).First(&user)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, msg.ErrResponseStr("用户不存在"))
+		return
+	}
+
+	// 检查地址记录是否存在
+	var snowaddress models.SnowAddress
+	result = db.DB.Where("user_id = ?", userID).First(&snowaddress)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, msg.ErrResponseStr("地址记录不存在"))
+		return
+	}
+
+	// 更新地址信息
+	time_now := time.Now()
+	snowaddress.Province = request.Province
+	snowaddress.City = request.City
+	snowaddress.County = request.County
+	snowaddress.DetailedAddress = request.DetailedAddress
+	snowaddress.ReceiverName = request.ReceiverName
+	snowaddress.ReceiverPhone = request.ReceiverPhone
+	snowaddress.FillTime = &time_now
+
+	// 保存更新
+	if err := db.DB.Save(&snowaddress).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, msg.ErrResponseStr("地址更新失败"))
+		return
+	}
+
+	c.JSON(http.StatusOK, msg.SuccessResponseStr("地址更新成功"))
 }
 
 func (suc *SnowAddressController) UpdateAddress(c *gin.Context) {
@@ -266,7 +343,7 @@ func (suc *SnowAddressController) QueryAddressByMobile(c *gin.Context) {
 	fmt.Printf("原始波次值", request.DrawBatch)
 	searchKey := fmt.Sprintf("\"%d\": %s", request.DrawBatch, request.Mobile)
 	fmt.Println("searchKey:", searchKey)
-	result := db.DB.Table("snow_uesr").
+	result := db.DB.Table("snow_user").
 		Where("mobile_batch LIKE ?", "%"+searchKey+"%").
 		Limit(1). // 强制只取第一条，优化性能
 		Pluck("user_id", &userID)
