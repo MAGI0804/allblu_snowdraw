@@ -57,9 +57,12 @@ func (snc *SnowAddressController) QualificationAddressVerification(c *gin.Contex
 		c.JSON(http.StatusNotFound, msg.ErrResponseStr("用户没有参与抽奖"))
 		return
 	}
+	if user.ReceiverName != "" {
+		c.JSON(http.StatusNotFound, msg.ErrResponseStr("已填写过地址"))
+		return
+	}
 	var snowaddress models.SnowAddress
 	result = db.DB.Where("user_id = ?", request.UserID).First(&snowaddress)
-
 	if result.Error != nil {
 
 		snowaddress.UserId = user.UserID
